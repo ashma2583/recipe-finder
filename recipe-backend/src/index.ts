@@ -1,8 +1,14 @@
 import express from 'express';
 import { Pool } from 'pg'; // Use Pool for better connection management
+import cors from 'cors';
 import 'dotenv/config'; // Load environment variables
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+const cppMatcher = require('../build/Release/matcher.node');
 
 const app = express();
+app.use(cors());
 const port = 3001;
 
 app.get('/', (req, res) => {
@@ -37,6 +43,72 @@ app.get('/api/health', async (req, res) => {
       message: 'Error connecting to database',
       error: (err as Error).message,
     });
+  }
+});
+
+app.get('/api/test-cpp', (req, res) => {
+  try {
+    // Simulated data
+    const myPantry = ["Tomato", "Garlic", "Pasta", "Onion"];
+    const recipeIngredients = ["Pasta", "Tomato", "Basil", "Garlic", "Olive Oil"];
+
+    // Call the C++ function
+    // (Pantry has 3 out of the 5 ingredients needed)
+    const score = cppMatcher.calculateMatch(myPantry, recipeIngredients);
+
+    res.json({
+      engine: "C++ High-Performance Matcher",
+      pantry: myPantry,
+      recipe_needs: recipeIngredients,
+      match_score: (score * 100).toFixed(0) + "% match"
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Matching failed", details: err });
+  }
+});
+
+app.get('/api/search', async (require, res) => {
+  try {
+    // get the user's pantry from frontend
+    const ingredientsParam = require.query.ingredients as string;
+    if (!ingredientsParam) {
+      return res.status(400).json({error: 'No ingredients provided'});
+    }
+    const userPantry = ingredientsParam.split(',');
+
+    // run sql query to get all recipes from db
+    const result = await pool.query(`
+      SELECT 
+        r.title, 
+        ARRAY_AGG(i.name) AS all_ingredients 
+      FROM recipes r
+      JOIN recipe_ingredients ri ON r.id = ri.recipe_id
+      JOIN ingredients i ON ri.ingredient_id = i.id
+      GROUP BY r.id, r.title;
+    `);
+
+    // loop through db results and use c++ to score
+    const recipesWithScores = result.rows.map((row:any) => {
+      const score = cppMatcher.calculateMatch(userPantry, row.all_ingredients);
+
+      return {
+        title: row.title,
+        ingredients: row.all_ingredients,
+        matchPercentage: (score * 100).toFixed(0) + '%'
+      };
+    });
+
+    // sort by bets match and send back to frontend
+    // sort by descending
+    recipesWithScores.sort((a: any, b: any) => 
+      parseInt(b.matchPercentage) - parseInt(a.matchPercentage)
+    );
+
+    res.json(recipesWithScores);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Search failed'});
   }
 });
 
