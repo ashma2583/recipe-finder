@@ -67,48 +67,41 @@ app.get('/api/test-cpp', (req, res) => {
   }
 });
 
-app.get('/api/search', async (require, res) => {
+app.get('/api/search', async (req, res) => {
   try {
-    // get the user's pantry from frontend
-    const ingredientsParam = require.query.ingredients as string;
-    if (!ingredientsParam) {
-      return res.status(400).json({error: 'No ingredients provided'});
-    }
+    const ingredientsParam = req.query.ingredients as string;
+    if (!ingredientsParam) return res.status(400).json({ error: 'No ingredients' });
+    
     const userPantry = ingredientsParam.split(',');
 
-    // run sql query to get all recipes from db
     const result = await pool.query(`
-      SELECT 
-        r.title, 
-        ARRAY_AGG(i.name) AS all_ingredients 
+      SELECT r.title, r.instructions, ARRAY_AGG(i.name) AS all_ingredients 
       FROM recipes r
       JOIN recipe_ingredients ri ON r.id = ri.recipe_id
       JOIN ingredients i ON ri.ingredient_id = i.id
-      GROUP BY r.id, r.title;
+      GROUP BY r.id, r.title, r.instructions;
     `);
 
-    // loop through db results and use c++ to score
-    const recipesWithScores = result.rows.map((row:any) => {
+    const recipesWithScores = result.rows.map((row: any) => {
       const score = cppMatcher.calculateMatch(userPantry, row.all_ingredients);
-
       return {
         title: row.title,
+        instructions: row.instructions,
         ingredients: row.all_ingredients,
+        matchScore: score,
         matchPercentage: (score * 100).toFixed(0) + '%'
       };
     });
 
-    // sort by bets match and send back to frontend
-    // sort by descending
-    recipesWithScores.sort((a: any, b: any) => 
-      parseInt(b.matchPercentage) - parseInt(a.matchPercentage)
-    );
+    // sort by highest score
+    recipesWithScores.sort((a, b) => b.matchScore - a.matchScore);
 
-    res.json(recipesWithScores);
+    // top 50
+    const top50 = recipesWithScores.slice(0, 50);
 
+    res.json(top50);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Search failed'});
+    res.status(500).json({ error: 'Search failed' });
   }
 });
 
