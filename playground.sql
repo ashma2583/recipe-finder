@@ -31,5 +31,7 @@ TRUNCATE recipes, ingredients, recipe_ingredients RESTART IDENTITY CASCADE;
 ALTER TABLE recipes ADD CONSTRAINT unique_recipe_title UNIQUE (title);
 
 SELECT * FROM recipes
+-- 2083
+SELECT * FROM ingredients WHERE id = 11910
 
 ALTER TABLE recipes ADD COLUMN image_name TEXT;

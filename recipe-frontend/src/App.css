@@ -257,10 +257,25 @@ button:active {
 }
 
 .modal-img {
-  width: 100%;
-  height: 250px;
-  object-fit: cover; /* Crops image nicely */
-  border-bottom: 1px solid #333;
+  /* 1. Let the image define its own aspect ratio */
+  width: auto;
+  height: auto;
+
+  /* 2. Set maximum limits so it fits on the screen */
+  max-width: 100%;       /* Don't be wider than the card */
+  max-height: 60vh;      /* Don't take up more than 60% of the screen height */
+
+  /* 3. Center it */
+  display: block;
+  margin: 0 auto;
+  
+  /* 4. The Safety Net: Ensure absolutely NO cropping happens */
+  object-fit: contain; 
+  
+  /* 5. Visuals */
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  margin-bottom: 20px;
 }
 
 .modal-header h2 {

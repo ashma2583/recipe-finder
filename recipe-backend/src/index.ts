@@ -75,11 +75,15 @@ app.get('/api/search', async (req, res) => {
     const userPantry = ingredientsParam.split(',');
 
     const result = await pool.query(`
-      SELECT r.title, r.instructions, ARRAY_AGG(i.name) AS all_ingredients 
+      SELECT 
+        r.title, 
+        r.instructions, 
+        r.image_name, 
+        ARRAY_AGG(i.name) AS all_ingredients 
       FROM recipes r
       JOIN recipe_ingredients ri ON r.id = ri.recipe_id
       JOIN ingredients i ON ri.ingredient_id = i.id
-      GROUP BY r.id, r.title, r.instructions;
+      GROUP BY r.id, r.title, r.instructions, r.image_name;
     `);
 
     const recipesWithScores = result.rows.map((row: any) => {
@@ -89,7 +93,8 @@ app.get('/api/search', async (req, res) => {
         instructions: row.instructions,
         ingredients: row.all_ingredients,
         matchScore: score,
-        matchPercentage: (score * 100).toFixed(0) + '%'
+        matchPercentage: (score * 100).toFixed(0) + '%',
+        image_name: row.image_name // <--- AND PASS IT HERE
       };
     });
 

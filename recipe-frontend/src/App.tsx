@@ -122,7 +122,7 @@ function App() {
               {/* IMAGE LOGIC */}
               <img 
                 src={selectedRecipe.image_name 
-                  ? `/food_images/${selectedRecipe.image_name}` 
+                  ? `/food_images/${selectedRecipe.image_name}`
                   : "https://via.placeholder.com/600x300?text=No+Image+Available"
                 } 
                 alt={selectedRecipe.title} 

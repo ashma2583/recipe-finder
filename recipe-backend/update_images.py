@@ -5,12 +5,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# 1. Load the CSV again
-# Make sure this matches your CSV filename exactly
+# 1. Load CSV
 csv_file = 'Food Ingredients and Recipe Dataset with Image Name Mapping.csv'
 df = pd.read_csv(csv_file)
 
-# 2. Connect to Database
+# 2. Connect
 conn = psycopg2.connect(
     host=os.getenv('DB_HOST'),
     user=os.getenv('DB_USER'),
@@ -20,35 +19,43 @@ conn = psycopg2.connect(
 )
 cur = conn.cursor()
 
-print("Connected. Updating image filenames...")
-
+print("Starting Fuzzy Image Update...")
 updated_count = 0
 
 for index, row in df.iterrows():
     try:
-        title = row['Title']
-        image_name = row['Image_Name'] # This is the column header in the Kaggle CSV
+        title = row['Title'].strip() # Remove accidental spaces
+        image_name = row['Image_Name']
         
-        # Clean up the filename if necessary (ensure it ends in .jpg)
+        if pd.isna(image_name): continue
+
         if not image_name.endswith('.jpg'):
              image_name += '.jpg'
 
-        # UPDATE the row where the title matches
+        # THE FIX: Use ILIKE and TRIM to catch mismatched titles
+        # This matches "Piccante Eggplant Sauce" with "Piccante Eggplant Sauce "
         cur.execute(
-            "UPDATE recipes SET image_name = %s WHERE title = %s",
+            """
+            UPDATE recipes 
+            SET image_name = %s 
+            WHERE TRIM(title) ILIKE %s 
+            AND image_name IS NULL
+            """,
             (image_name, title)
         )
         
-        updated_count += 1
+        if cur.rowcount > 0:
+            updated_count += 1
         
-        if updated_count % 1000 == 0:
+        if updated_count % 100 == 0:
             conn.commit()
             print(f"Updated {updated_count} recipes...")
 
     except Exception as e:
-        print(f"Error at index {index}: {e}")
+        conn.rollback()
+        # print(f"Error: {e}")
 
 conn.commit()
 cur.close()
 conn.close()
-print(f"Success! Updated {updated_count} recipe images.")
+print(f"Done! Filled in {updated_count} missing images.")
