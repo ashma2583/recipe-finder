@@ -6,7 +6,7 @@ interface Recipe {
   ingredients: string[];
   instructions: string;
   matchPercentage: string;
-  image_name: string | null; // Optional for now
+  image_name: string | null; 
 }
 
 function App() {
@@ -14,7 +14,7 @@ function App() {
   const [pantry, setPantry] = useState<string[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null); // NEW: Track clicked recipe
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null); 
 
   const recipesPerPage = 10;
 
@@ -52,7 +52,7 @@ function App() {
     <div className="container">
       <h1>🍅 C++ Recipe Matcher</h1>
       
-      {/* 1. Build Pantry */}
+      {/* build pantry */}
       <div className="card">
         <h2>1. Build Your Pantry</h2>
         <div className="input-group">
@@ -74,14 +74,14 @@ function App() {
         </div>
       </div>
 
-      {/* 2. Action */}
+      {/* action */}
       <div className="action-area">
         <button className="search-btn" onClick={searchRecipes}>
           Find Recipes (Run C++ Engine)
         </button>
       </div>
 
-      {/* 3. Results - NOW CLICKABLE */}
+      {/* results */}
       <div className="results">
         {currentRecipes.map((r, idx) => (
           <div 
@@ -100,7 +100,7 @@ function App() {
         ))}
       </div>
 
-      {/* 4. Pagination */}
+      {/* pagination */}
       {recipes.length > 0 && (
         <div className="pagination">
           <button disabled={currentPage === 1} onClick={() => setCurrentPage(prev => prev - 1)}>Previous</button>
@@ -109,17 +109,17 @@ function App() {
         </div>
       )}
 
-      {/* 5. THE MODAL (Popup) */}
+      {/* modal */}
       {selectedRecipe && (
         <div className="modal-overlay" onClick={() => setSelectedRecipe(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <button className="close-btn" onClick={() => setSelectedRecipe(null)}>×</button>
             
-            {/* Image Placeholder */}
+            {/* image placeholder */}
             <div className="modal-header">
               <h2>{selectedRecipe.title}</h2>
               
-              {/* IMAGE LOGIC */}
+              {/* image */}
               <img 
                 src={selectedRecipe.image_name 
                   ? `/food_images/${selectedRecipe.image_name}`

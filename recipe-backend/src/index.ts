@@ -1,5 +1,9 @@
 import express from 'express';
-import { Pool } from 'pg'; // Use Pool for better connection management
+import multer from 'multer';
+import { spawn } from 'child_process';
+import path from 'path';
+import fs from 'fs';
+import { Pool } from 'pg'; // use pool to connect to aws rds
 import cors from 'cors';
 import 'dotenv/config'; // Load environment variables
 import { createRequire } from 'module';
@@ -8,6 +12,7 @@ const require = createRequire(import.meta.url);
 const cppMatcher = require('../build/Release/matcher.node');
 
 const app = express();
+const upload = multer({ dest: 'uploads/' });
 app.use(cors());
 const port = 3001;
 
@@ -52,8 +57,7 @@ app.get('/api/test-cpp', (req, res) => {
     const myPantry = ["Tomato", "Garlic", "Pasta", "Onion"];
     const recipeIngredients = ["Pasta", "Tomato", "Basil", "Garlic", "Olive Oil"];
 
-    // Call the C++ function
-    // (Pantry has 3 out of the 5 ingredients needed)
+    // call  C++ function
     const score = cppMatcher.calculateMatch(myPantry, recipeIngredients);
 
     res.json({
@@ -110,6 +114,41 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
+app.post('/api/vision', upload.single('image'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'No image uploaded' });
+    }
+
+    const imagePath = req.file.path;
+
+    // Run the Python script as a child process
+    // Passing the image path as a command-line argument
+    const pythonProcess = spawn('python', ['detect.py', imagePath]);
+
+    let dataString = '';
+
+    pythonProcess.stdout.on('data', (data) => {
+        dataString += data.toString();
+    });
+
+    pythonProcess.stderr.on('data', (data) => {
+        console.error(`Python Error: ${data}`);
+    });
+
+    pythonProcess.on('close', (code) => {
+        // delete upload file after process
+        fs.unlinkSync(imagePath);
+
+        try {
+            const ingredients = JSON.parse(dataString);
+            res.json({ ingredients });
+        } catch (e) {
+            res.status(500).json({ error: 'Failed to parse model output' });
+        }
+    });
+});
+
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
+

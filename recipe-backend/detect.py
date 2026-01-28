@@ -2,7 +2,7 @@ import sys
 import json
 from ultralytics import YOLO
 
-# Load the base model (downloads automatically)
+# model
 model = YOLO('yolov8n.pt') 
 
 def detect(image_path):
