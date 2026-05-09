@@ -7,7 +7,7 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   port: Number(process.env.DB_PORT),
-  ssl: { rejectUnauthorized: false }
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
 });
 
 const createTablesQuery = `
@@ -28,7 +28,7 @@ const createTablesQuery = `
     id SERIAL PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
     instructions TEXT,
-    image_url VARCHAR(500)
+    image_name VARCHAR(500)
   );
 
   -- 4. Recipe_Ingredients (Links Recipes to Ingredients)

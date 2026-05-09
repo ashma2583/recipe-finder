@@ -1,1 +1,57 @@
-recipe-backend/.env
+# --- Secrets ---
+.env
+.env.*
+!.env.example
+
+# --- Node ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# --- Build output ---
+dist/
+build/
+*.tsbuildinfo
+.eslintcache
+
+# Native addon build artifacts (recipe-backend/build/)
+# Keep binding.gyp tracked; ignore generated files
+recipe-backend/build/Release/obj/
+recipe-backend/build/Debug/
+
+# --- Python ---
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# --- ML model files & training output ---
+*.pt
+*.onnx
+runs/
+.ultralytics/
+
+# --- Datasets (too large for git) ---
+*.csv
+recipes_data.csv
+Food Ingredients and Recipe Dataset with Image Name Mapping.csv
+
+# --- IDE / editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Logs / temp ---
+*.log
+*.tmp
+tmp/

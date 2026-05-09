@@ -3,6 +3,12 @@ import { Pool } from 'pg'; // Use Pool for better connection management
 import cors from 'cors';
 import 'dotenv/config'; // Load environment variables
 import { createRequire } from 'module';
+import multer from 'multer';
+import { spawn } from 'child_process';
+import { randomUUID } from 'crypto';
+import { tmpdir } from 'os';
+import path from 'path';
+import fs from 'fs/promises';
 
 const require = createRequire(import.meta.url);
 const cppMatcher = require('../build/Release/matcher.node');
@@ -10,6 +16,17 @@ const cppMatcher = require('../build/Release/matcher.node');
 const app = express();
 app.use(cors());
 const port = 3001;
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: tmpdir(),
+    filename: (_req, file, cb) => cb(null, `${randomUUID()}${path.extname(file.originalname) || '.jpg'}`)
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 } // 10 MB
+});
+
+const PYTHON_BIN = process.env.PYTHON_PATH || 'python';
+const DETECT_SCRIPT = path.resolve('detect.py');
 
 app.get('/', (req, res) => {
   res.send('Welcome to the Recipe Finder API! Try /api/health to check the database.');
@@ -22,9 +39,7 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   port: Number(process.env.DB_PORT),
-  ssl: { // AWS RDS often requires SSL
-    rejectUnauthorized: false 
-  }
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
 });
 
 // test route to check DB connection
@@ -107,6 +122,39 @@ app.get('/api/search', async (req, res) => {
     res.json(top50);
   } catch (err) {
     res.status(500).json({ error: 'Search failed' });
+  }
+});
+
+app.post('/api/detect', upload.single('image'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
+
+  const imagePath = req.file.path;
+  try {
+    const detected = await new Promise<string[]>((resolve, reject) => {
+      const proc = spawn(PYTHON_BIN, [DETECT_SCRIPT, imagePath]);
+      let stdout = '';
+      let stderr = '';
+      proc.stdout.on('data', (chunk) => { stdout += chunk.toString(); });
+      proc.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+      proc.on('error', reject);
+      proc.on('close', (code) => {
+        if (code !== 0) return reject(new Error(`detect.py exited ${code}: ${stderr}`));
+        try {
+          // detect.py prints a single JSON line at the end
+          const lastLine = stdout.trim().split('\n').filter(Boolean).pop() || '[]';
+          resolve(JSON.parse(lastLine));
+        } catch (e) {
+          reject(new Error(`Bad detect.py output: ${stdout}`));
+        }
+      });
+    });
+
+    res.json({ ingredients: detected });
+  } catch (err) {
+    console.error('detect failed:', err);
+    res.status(500).json({ error: 'Detection failed', details: (err as Error).message });
+  } finally {
+    fs.unlink(imagePath).catch(() => {});
   }
 });
 

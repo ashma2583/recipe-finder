@@ -2,27 +2,34 @@ import sys
 import json
 from ultralytics import YOLO
 
-# Load the base model (downloads automatically)
-model = YOLO('yolov8n.pt') 
+# COCO class IDs that correspond to food / kitchen items.
+# YOLOv8n stock model only knows these — for fridge contents you'd train a custom model.
+FOOD_CLASS_IDS = {
+    46,  # banana
+    47,  # apple
+    48,  # sandwich
+    49,  # orange
+    50,  # broccoli
+    51,  # carrot
+    52,  # hot dog
+    53,  # pizza
+    54,  # donut
+    55,  # cake
+}
+
+model = YOLO('yolov8n.pt')
 
 def detect(image_path):
-    # Run inference with a confidence threshold of 50%
-    results = model.predict(source=image_path, conf=0.5, save=False, verbose=False)
-    
-    found_items = set()
-    
+    results = model.predict(source=image_path, conf=0.4, save=False, verbose=False)
+    found = set()
     for r in results:
         for box in r.boxes:
-            # box.cls is the class ID (e.g., 47 for 'apple')
             class_id = int(box.cls[0])
-            name = model.names[class_id]
-            found_items.add(name)
-            
-    return list(found_items)
+            if class_id in FOOD_CLASS_IDS:
+                found.add(model.names[class_id])
+    return sorted(found)
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        # Node.js sends the image path as an argument
-        image_path = sys.argv[1]
-        ingredients = detect(image_path)
+        ingredients = detect(sys.argv[1])
         print(json.dumps(ingredients))
