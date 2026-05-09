@@ -1,7 +1,7 @@
 import express from 'express';
-import { Pool } from 'pg'; // Use Pool for better connection management
+import { Pool } from 'pg';
 import cors from 'cors';
-import 'dotenv/config'; // Load environment variables
+import 'dotenv/config';
 import { createRequire } from 'module';
 import multer from 'multer';
 import { spawn } from 'child_process';
@@ -32,7 +32,6 @@ app.get('/', (req, res) => {
   res.send('Welcome to the Recipe Finder API! Try /api/health to check the database.');
 });
 
-// Set up the PostgreSQL connection pool
 const pool = new Pool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -42,12 +41,11 @@ const pool = new Pool({
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
 });
 
-// test route to check DB connection
 app.get('/api/health', async (req, res) => {
   try {
     const client = await pool.connect();
-    const time = await client.query('SELECT NOW()'); // Simple query
-    client.release(); // Release the client back to the pool
+    const time = await client.query('SELECT NOW()');
+    client.release();
 
     res.json({
       message: 'Server is healthy!',
@@ -63,12 +61,9 @@ app.get('/api/health', async (req, res) => {
 
 app.get('/api/test-cpp', (req, res) => {
   try {
-    // Simulated data
     const myPantry = ["Tomato", "Garlic", "Pasta", "Onion"];
     const recipeIngredients = ["Pasta", "Tomato", "Basil", "Garlic", "Olive Oil"];
 
-    // Call the C++ function
-    // (Pantry has 3 out of the 5 ingredients needed)
     const score = cppMatcher.calculateMatch(myPantry, recipeIngredients);
 
     res.json({
@@ -86,15 +81,15 @@ app.get('/api/search', async (req, res) => {
   try {
     const ingredientsParam = req.query.ingredients as string;
     if (!ingredientsParam) return res.status(400).json({ error: 'No ingredients' });
-    
+
     const userPantry = ingredientsParam.split(',');
 
     const result = await pool.query(`
-      SELECT 
-        r.title, 
-        r.instructions, 
-        r.image_name, 
-        ARRAY_AGG(i.name) AS all_ingredients 
+      SELECT
+        r.title,
+        r.instructions,
+        r.image_name,
+        ARRAY_AGG(i.name) AS all_ingredients
       FROM recipes r
       JOIN recipe_ingredients ri ON r.id = ri.recipe_id
       JOIN ingredients i ON ri.ingredient_id = i.id
@@ -109,14 +104,11 @@ app.get('/api/search', async (req, res) => {
         ingredients: row.all_ingredients,
         matchScore: score,
         matchPercentage: (score * 100).toFixed(0) + '%',
-        image_name: row.image_name // <--- AND PASS IT HERE
+        image_name: row.image_name
       };
     });
 
-    // sort by highest score
     recipesWithScores.sort((a, b) => b.matchScore - a.matchScore);
-
-    // top 50
     const top50 = recipesWithScores.slice(0, 50);
 
     res.json(top50);
@@ -140,7 +132,6 @@ app.post('/api/detect', upload.single('image'), async (req, res) => {
       proc.on('close', (code) => {
         if (code !== 0) return reject(new Error(`detect.py exited ${code}: ${stderr}`));
         try {
-          // detect.py prints a single JSON line at the end
           const lastLine = stdout.trim().split('\n').filter(Boolean).pop() || '[]';
           resolve(JSON.parse(lastLine));
         } catch (e) {

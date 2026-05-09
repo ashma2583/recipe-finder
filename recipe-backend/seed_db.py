@@ -6,10 +6,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# 1. Load the CSV
 df = pd.read_csv('Food Ingredients and Recipe Dataset with Image Name Mapping.csv', encoding='utf-8')
 
-# 2. Connect to AWS RDS
+# connect rds
 conn = psycopg2.connect(
     host=os.getenv('DB_HOST'),
     user=os.getenv('DB_USER'),
@@ -23,19 +22,19 @@ print("Connected to AWS. Starting upload...")
 
 for index, row in df.iterrows():
     try:
-        # Save Recipe
+        # save recipe
         cur.execute(
             "INSERT INTO recipes (title, instructions) VALUES (%s, %s) RETURNING id",
             (row['Title'], row['Instructions'])
         )
         recipe_id = cur.fetchone()[0]
 
-        # Process Ingredients (Kaggle stores them as a string representation of a list)
-        # We convert it to a real Python list
+        # process Ingredients
+        # convert to python list
         ingredients = eval(row['Cleaned_Ingredients']) 
 
         for ing_name in ingredients:
-            # Check if ingredient exists, or insert it
+            # check if ingredients exist, or insert
             cur.execute(
                 """
                 INSERT INTO ingredients (name) 
